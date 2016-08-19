@@ -6,6 +6,13 @@
 #define SPEED               12
 #define START_STOP          13
 
+//=================== Added ====================
+#define ITR_PIN		    0
+
+#define  ONE_THOUSAND	1000
+#define  ONE_MILLION	1000000
+//==============================================
+
 using namespace std;
 
 class LandRover {
@@ -32,7 +39,6 @@ public:
 	//void fasterSpeed();
 	//void slowerSpeed();
 	//
-
 
 private:
 	int huge_turn;		//huge turn delay
@@ -63,6 +69,23 @@ private:
 
 	//DIRECTION STATE
 	int prev_rl;
-
-
 };
+
+//================================= Added Parameters =====================================
+	enum WheelState {
+		WLEFT,
+		WRIGHT,
+		WCENTER,
+	};
+	bool searchingCenterPoint;
+	bool centerPointDetected;
+	WheelState wState;
+//========================================================================================
+//================================= Added Functions ======================================
+	void centerPointItr();
+	void searchForCenterPoint(WheelState state);
+	void setSearchingCenterPoint(bool b);
+	void setCenterPointDetected(bool b);
+	bool isSearchingForCenterPoint();
+	bool isCenterPointDetected();
+//========================================================================================
