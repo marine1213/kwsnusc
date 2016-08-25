@@ -24,5 +24,6 @@
 #define DEBUG_USE_LOG		1
 #define DEBUG_USE_SERIAL	1
 #define DEBUG_USE_KEYBOARD	0
+#define MAX_NUM_CAR			4
 
 

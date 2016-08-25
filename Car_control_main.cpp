@@ -36,6 +36,9 @@ void init_System(){
 	init_Serial();
 	init_GPIO();
 	control.setup();
+	control.setLog(LogCar);
+	control.setKeyboardUse(true); // KSLee to control Log data, set variable
+
 }
 void close_System(){
 	close_Log();
@@ -44,12 +47,12 @@ void close_System(){
 
 void init_Log(){
 	struct tm *now = localtime(&LogTime);
-	char FileNAME[200];
-	sprintf(FileNAME, "%d", "%c", "%d", "%c", "%d", "%s",
-		now->tm_mday, '_', now->tm_hour, '_', now->tm_min, ".txt");
-	LogCar.open(FileNAME);
-	printf("Done : init_Log, file open\n");
+   	char FileNAME[200];
+   	sprintf(FileNAME, "%s%0.2d%0.2d%0.2d%s", "Log",now->tm_mday,now->tm_hour,now->tm_min, ".txt");
+   	LogCar.open(FileNAME);
+   	printf("Done : init_Log, file open\n");
 }
+
 void init_Serial(){
 	if ((fd = serialOpen(device, baud))<0) {
 		cout << "Unable to open serial device" << endl;
@@ -57,6 +60,7 @@ void init_Serial(){
 	}
 	printf("Done : init_Serial, serial open\n");
 }
+
 void init_GPIO(){
 	if (wiringPiSetup() == -1) {
 		cout << "Unable to start wiringPi" << endl;
@@ -88,7 +92,11 @@ void get_keyboard(){
 		control.setStopState(0);
 		control.stop();
 	}
-	else if(inputString=='P'||inputString=='p') isKeyboard=false;
+	else if(inputString=='P'||inputString=='p') {
+		isKeyboard=false;
+		control.rl=0;
+		control.setKeyboardUse(false); // KSLee
+	}
 	else cout<<"Unknown Command"<<endl;
 }
 
@@ -234,10 +242,13 @@ void validate_data(){
 				top = atoi(splitedInput[4].c_str());
 				useIntersection = true;
 				safetyline = (rht - lft) / SAFETY_LINE_DIV;
+				intsec.setIntersectionData(NULL, lft, top, rht, btm, 
+					safetyline, sid, MAX_NUM_CAR, LogCar);
 				cout << "LEFT : " << lft << ", " << "RIGHT : " << rht << endl;
 				cout << "TOP  : " << top << ", " << "BOTTOM : " << btm << endl;
 				LogCar << "LEFT : " << lft << ", " << "RIGHT : " << rht << endl;
 				LogCar << "TOP  : " << top << ", " << "BOTTOM : " << btm << endl;
+				
 			}
 			else{
 				cout << "ERROR : case I : false intersection pos data" << endl;
@@ -272,7 +283,7 @@ void validate_data(){
 
 		case 'e': // eot?
 			//TODO target send end signal
-			printGoal(id); // TODO : for iteration for every id
+			printGoal(sid); // TODO : for iteration for every id
 			targetDataDone = true;
 			isDataFull = false;
 			dataTimingSetting = true;
@@ -306,8 +317,8 @@ void run_car(){
 		}
 
 		if (car[sid].x > 0 && x_before>0) {	//at least one position data required
-			cout << "run_car function started" << endl;
-			cout << "get car x,y and x before" << endl;
+			//cout << "run_car function started" << endl;
+			//cout << "get car x,y and x before" << endl;
 
 			//let goal position would be send first
 
@@ -320,9 +331,6 @@ void run_car(){
 			int xd = xgoal[step] - car[sid].x;
 			int yd = ygoal[step] - car[sid].y;
 			int dist = sqrt(xd*xd + yd*yd);
-			cout << "(dist, M, X) = (" << dist << ", " << m << ", " << xprime << ")" << endl;
-			LogCar << "(dist, M, X) = (" << dist << ", " << m << ", " << xprime << ")" << endl;
-
 			if (dist <= DIST_TH) {
 				if (step == xgoal.size() - 1) {
 					cout << "End of the trip!" << endl;
@@ -340,31 +348,36 @@ void run_car(){
 					LogCar << "Go to next step : " << step << endl;
 					xd = xgoal[step] - car[sid].x;
 					yd = ygoal[step] - car[sid].y;
+					dist=sqrt(xd*xd+yd*yd);
 					xprime = (double)car[sid].x + ((double)ygoal[step] - (double)car[sid].y) / m;
 				}
 			}
+			cout << "(sid, dist, M, X) = (" << sid << "," << dist << "," << m << "," << xprime << ")" << endl;
+			LogCar << "(sid, dist, M, X) = (" << sid << "," << dist << "," << m << "," << xprime << ")" << endl;
+
 			if (isGoal()){
 				whereToGo(dist, m, xprime);
-				bool isSafe = safetyCheck(sid);
+				//bool isSafe = safetyCheck(sid);
+				bool isSafe = true;
 				control.setStopState(1);
 
-				if (useIntersection){ // use Intersection case
-					int mode = intsec.pcessIntsc(car, lft, rht, top, btm, safetyline, sid);
-					if (isSafe) {
-						switch (mode){
-						case 0: control.drive();
-							break;
-						case 1: control.setStopState(0);
-							control.stop();
-							break;
-						case 2: control.rl = 0;
-							break;
+				if (useIntersection){ // use Intersection case	
+					if (isSafe && intsec.isInIntersection(sid, car[sid].x, car[sid].y)){ // I'm in intersection
+						intsec.checkCarIntersection(car, MAX_NUM_CAR);
+						if (intsec.isPossibleCrossing(sid)){ // no car or my case
+							LogCar << "case INTER : possible crossing" << endl;
+							cout << "case INTER : possible crossing" << endl;
+							control.drive();
 						}
+						else{ // don't move
+							LogCar << "case INTER : impossible crossing" << endl;
+							cout << "case INTER : impossible crossing" << endl;
+							control.setStopState(0);
+							control.stop();
+						}							
 					}
-					else {
-						targetDataDone = false;
-						control.setStopState(0);
-						control.stop();
+					else{ // I'm not in intersection
+						control.drive();
 					}
 				} // not use intersection case
 				else{
@@ -374,7 +387,6 @@ void run_car(){
 						control.stop();
 					}
 				}
-
 			}
 			else{ // goal size 0
 				targetDataDone = false;
@@ -384,6 +396,8 @@ void run_car(){
 		}
 	}
 	dataTimingSetting = false;
+	LogCar << endl;
+	cout << endl;
 }
 
 vector<string> split(string str, char delimiter){
@@ -519,8 +533,8 @@ void whereToGo(int dist, double m, double xprime){
 bool safetyCheck(int sid){
 	int dist;
 	int counter = 0;
-	cout << "SAFETYCHECK START" << endl;
-	LogCar << "SAFETYCHECK START" << endl;
+	cout << "SAFETYCHECK : ";
+	LogCar << "SAFETYCHECK : ";
 	for (int i = 1; i<7; i++){
 		counter++;
 		if (i == sid)

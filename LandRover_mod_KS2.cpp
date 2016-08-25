@@ -40,6 +40,8 @@ LandRover::LandRover() {
 	SpeedState = SPEED_LOW;
 	StopState = START_STATUS;
 	prev_rl=0;
+	enlarged=false;
+	//KeyboardMode = true;
 }
 void LandRover::setStopState(int a) {
 	if (a == 1) {
@@ -97,8 +99,14 @@ void LandRover::stop() {
 	digitalWrite(START_STOP, LOW);
 	StopState++;
 	StopState = StopState % 2;
-	if (StopState == START_STATUS) cout << "START" << endl;
-	else cout << "STOP" << endl;
+	if (StopState == START_STATUS) {
+		cout << "START" << endl;
+		*cLog<<"START"<<endl;
+	}
+	else {
+		cout << "STOP" << endl;
+		*cLog<<"STOP"<<endl;
+	}
 	digitalWrite(LEFT_RIGHT_U,LOW);
 	digitalWrite(LEFT_RIGHT_D,LOW);
 }
@@ -110,33 +118,40 @@ int LandRover::checkStopState() {
 void LandRover::drive(){
 	switch (rl){
 	case 1:
-		cout << "SMALL Turn RIGHT" << endl;
+		PrintLog("SMALL Turn RIGHT");
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, HIGH);
 		delay(small_turn);
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, LOW);
+		if(prev_rl==1) enlarged=true;
 		prev_rl=1;
-		cout << "SMALL Turn Right end " << endl;
+		PrintLog("SMALL Turn Right end");
 		break;
 
 	case 2:
-		cout << "HUGE Turn RIGHT" << endl;
+		PrintLog("HUGE Turn RIGHT");
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, HIGH);
 		delay(huge_turn);
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, LOW);
 		prev_rl=2;
-		cout << "HUGE Turn Right end " << endl;
+		PrintLog("HUGE Turn Right end ");
 		break;
 
 	case 0:
 		//go straight
-		cout << "Go STRAIGHT" << endl;
+		PrintLog("Go STRAIGHT");
+		if(enlarged){
+			PrintLog("signal enlarged");
+			if(prev_rl==1) prev_rl=2;
+			else if(prev_rl==-1) prev_rl=-2;
+			enlarged=false;
+		}
 		switch(prev_rl){
 			case 1:
-				cout<<"prev state was small turn right"<<endl;
+				PrintLog("prev state was small turn right");
 				digitalWrite(LEFT_RIGHT_U,HIGH);
 				digitalWrite(LEFT_RIGHT_D,LOW);
 				delay(small_turn);
@@ -145,7 +160,7 @@ void LandRover::drive(){
 				prev_rl=0;
 				break;
 			case 2:
-				cout<<"prev state was huge turn right"<<endl;
+				PrintLog("prev state was huge turn right");
 				digitalWrite(LEFT_RIGHT_U,HIGH);
 				digitalWrite(LEFT_RIGHT_D,LOW);
 				delay(huge_turn);
@@ -154,10 +169,11 @@ void LandRover::drive(){
 				prev_rl=0;
 				break;
 			case 0:
-				cout<<"prev state was go straight"<<endl;
+				PrintLog("prev state was go straight");
+				prev_rl=0;
 				break;
 			case -1:
-				cout<<"prev state was small turn left"<<endl;
+				PrintLog("prev state was small turn left");
 				digitalWrite(LEFT_RIGHT_U,LOW);
 				digitalWrite(LEFT_RIGHT_D,HIGH);
 				delay(small_turn);
@@ -166,7 +182,7 @@ void LandRover::drive(){
 				prev_rl=0;
 				break;
 			case -2:
-				cout<<"prev state was small turn left"<<endl;
+				PrintLog("prev state was huge turn left");
 				digitalWrite(LEFT_RIGHT_U,LOW);
 				digitalWrite(LEFT_RIGHT_D,HIGH);
 				delay(huge_turn);
@@ -176,29 +192,29 @@ void LandRover::drive(){
 				break;
 		}
 		break;
-
 	case -1:
 		//turn left
-		cout << "SMALL Turn LEFT" << endl;
+		PrintLog("SMALL Turn LEFT");
 		digitalWrite(LEFT_RIGHT_U, HIGH);
 		digitalWrite(LEFT_RIGHT_D, LOW);
 		delay(small_turn);
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, LOW);
 		prev_rl=-1;
-		cout << "SMALL Turn LEFT signal end " << endl;
+		if(prev_rl==-1) enlarged=true;
+		PrintLog("SMALL Turn LEFT signal end ");
 		break;
 
 	case -2:
 		//turn left
-		cout << "HUGE Turn LEFT" << endl;
+		PrintLog("HUGE Turn LEFT");
 		digitalWrite(LEFT_RIGHT_U, HIGH);
 		digitalWrite(LEFT_RIGHT_D, LOW);
 		delay(huge_turn);
 		digitalWrite(LEFT_RIGHT_U, LOW);
 		digitalWrite(LEFT_RIGHT_D, LOW);
 		prev_rl=-2;
-		cout << "HUGE Turn LEFT signal end " << endl;
+		PrintLog("HUGE Turn LEFT signal end ");
 		break;
 	}
 }
@@ -217,4 +233,21 @@ void LandRover::setSmallDelay(int i){
 void LandRover::setHugeDelay(int i){
 	huge_turn = i;
 	cout << "set huge delay to " << i << endl;
+}
+void LandRover::setLog(ofstream& LogCar){
+	cLog=&LogCar;
+}
+
+void LandRover::setKeyboardUse(bool tf){
+	KeyboardMode = tf;
+	if(KeyboardMode)
+		*cLog << "Keyboard mode start" << endl;
+	else
+		*cLog << "Keyboard mode end" << endl;
+}
+
+void LandRover::PrintLog(string str){
+	cout << str << endl;
+	if(!KeyboardMode)
+		*cLog << str << endl;
 }

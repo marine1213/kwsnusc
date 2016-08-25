@@ -6,13 +6,6 @@
 #define SPEED               12
 #define START_STOP          13
 
-//=================== Added ====================
-#define ITR_PIN		    0	// set your desired pin for interrupt here
-
-#define  ONE_THOUSAND	1000	// parameters for time calculation
-#define  ONE_MILLION	1000000
-//==============================================
-
 using namespace std;
 
 class LandRover {
@@ -36,9 +29,13 @@ public:
 	int getHugeDelay();
 	void setSmallDelay(int i);
 	void setHugeDelay(int i);
+	void setLog(ofstream& LogCar);
+	void PrintLog(string str);
+	void setKeyboardUse(bool tf);
 	//void fasterSpeed();
 	//void slowerSpeed();
 	//
+
 
 private:
 	int huge_turn;		//huge turn delay
@@ -69,23 +66,9 @@ private:
 
 	//DIRECTION STATE
 	int prev_rl;
-};
+	bool enlarged;
 
-//================================= Added Parameters =====================================
-	enum WheelState {
-		WLEFT,
-		WRIGHT,
-		WCENTER,
-	};
-	bool searchingCenterPoint;	// set mode to enable interrupt function
-	bool centerPointDetected;	// called when the interrupt is triggered
-	WheelState wState;		// current state of wheel, initiated at center
-//========================================================================================
-//================================= Added Functions ======================================
-	void centerPointItr();				// mini function is called when interrupt is triggered
-	void searchForCenterPoint(WheelState state); 	// use this function for searching center point
-	void setSearchingCenterPoint(bool b);		// setters and getters
-	void setCenterPointDetected(bool b);
-	bool isSearchingForCenterPoint();
-	bool isCenterPointDetected();
-//========================================================================================
+	//write Log
+	ofstream* cLog;
+	bool KeyboardMode; // to control Log data 
+};
